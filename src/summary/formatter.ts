@@ -3,6 +3,7 @@ import * as path from "path";
 import { config } from "../config.js";
 import { logger } from "../utils/logger.js";
 import { t } from "../i18n/index.js";
+import { formatMarkdownChunks } from "../utils/markdown.js";
 
 const TELEGRAM_MESSAGE_LIMIT = 4096;
 
@@ -35,23 +36,7 @@ export function formatSummary(text: string): string[] {
     return [];
   }
 
-  const parts = splitText(text, TELEGRAM_MESSAGE_LIMIT);
-  const formattedParts: string[] = [];
-
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) {
-      continue;
-    }
-
-    if (parts.length > 1) {
-      formattedParts.push(`\`\`\`\n${trimmed}\n\`\`\``);
-    } else {
-      formattedParts.push(trimmed);
-    }
-  }
-
-  return formattedParts;
+  return formatMarkdownChunks(text, TELEGRAM_MESSAGE_LIMIT);
 }
 
 function getToolDetails(tool: string, input?: { [key: string]: unknown }): string {
