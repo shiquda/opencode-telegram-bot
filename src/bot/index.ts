@@ -108,23 +108,28 @@ async function ensureEventSubscription(): Promise<void> {
       );
       for (let i = 0; i < parts.length; i++) {
         const isLastPart = i === parts.length - 1;
-        if (isLastPart && keyboardManager.isInitialized()) {
-          // Attach updated keyboard to the last message part (only if initialized)
-          const keyboard = keyboardManager.getKeyboard();
-          if (keyboard) {
-            await botInstance.api.sendMessage(chatIdInstance, parts[i], {
-              reply_markup: keyboard,
+        const keyboard =
+          isLastPart && keyboardManager.isInitialized() ? keyboardManager.getKeyboard() : undefined;
+
+        try {
+          await botInstance.api.sendMessage(chatIdInstance, parts[i], {
+            parse_mode: "HTML",
+            ...(keyboard ? { reply_markup: keyboard } : {}),
+          });
+        } catch (sendErr) {
+          const errMsg = String(sendErr);
+          if (errMsg.includes("can't parse entities") || errMsg.includes("parse mode")) {
+            logger.warn(`[Bot] HTML parse failed, sending as plain text: ${errMsg}`);
+            await botInstance.api.sendMessage(chatIdInstance, messageText, {
+              ...(keyboard ? { reply_markup: keyboard } : {}),
             });
           } else {
-            await botInstance.api.sendMessage(chatIdInstance, parts[i]);
+            throw sendErr;
           }
-        } else {
-          await botInstance.api.sendMessage(chatIdInstance, parts[i]);
         }
       }
     } catch (err) {
       logger.error("Failed to send message to Telegram:", err);
-      // Stop processing events after critical error to prevent infinite loop
       logger.error("[Bot] CRITICAL: Stopping event processing due to error");
       summaryAggregator.clear();
     }
